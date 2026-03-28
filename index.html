@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GWPE – Seiklus metsas</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{overflow:hidden;background:#0D1B3E;font-family:'Comic Sans MS',cursive;user-select:none;}
+canvas{display:block;position:fixed;top:0;left:0;}
+
+#startScreen{
+  position:fixed;inset:0;
+  background:radial-gradient(ellipse at 30% 40%,#1a0538 0%,#0D1B3E 50%,#0a2a0e 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:20px;
+}
+#startScreen.hidden{display:none;}
+.sparkle{position:absolute;pointer-events:none;font-size:1.2rem;animation:sparkleAnim 3s ease-in-out infinite;}
+@keyframes sparkleAnim{0%,100%{opacity:0;transform:scale(0) translateY(0);}50%{opacity:1;transform:scale(1) translateY(-30px);}}
+.logo-wrap{animation:float 3s ease-in-out infinite;text-align:center;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+.logo-text{
+  font-size:clamp(4rem,12vw,8rem);font-weight:900;letter-spacing:.3em;
+  background:linear-gradient(135deg,#FFD700,#FF85C2,#B57FFF,#5BC8FF);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 20px rgba(255,215,0,.5));
+}
+.logo-sub{color:#FFD700;font-size:clamp(.9rem,2.5vw,1.4rem);margin-top:-5px;text-shadow:0 0 12px rgba(255,215,0,.5);}
+.logo-deco{font-size:1.8rem;animation:spin 4s linear infinite;display:inline-block;margin:0 8px;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.btn{padding:14px 40px;border:none;border-radius:50px;font-family:inherit;font-weight:bold;cursor:pointer;transition:all .2s;}
+.btn:hover{transform:scale(1.08);}
+.btn-start{background:linear-gradient(135deg,#FFD700,#FF85C2);color:#1a0538;font-size:1.4rem;padding:18px 55px;box-shadow:0 0 30px rgba(255,215,0,.4);}
+.btn-join{background:linear-gradient(135deg,#5BC8FF,#B57FFF);color:#fff;font-size:1.1rem;}
+.hint{color:rgba(255,255,255,.6);font-size:.88rem;text-align:center;max-width:320px;}
+
+#modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);z-index:300;}
+#modal.hidden{display:none;}
+.mbox{background:linear-gradient(135deg,#1a0538,#0D3B1E);border:3px solid #FFD700;border-radius:20px;padding:28px;width:min(420px,90vw);color:#fff;text-align:center;box-shadow:0 0 40px rgba(255,215,0,.3);}
+.mbox h2{color:#FFD700;font-size:1.6rem;margin-bottom:15px;}
+.code-big{font-size:3rem;font-weight:900;letter-spacing:.3em;color:#FF85C2;background:rgba(255,133,194,.1);border-radius:10px;padding:12px;margin:12px 0;text-shadow:0 0 20px rgba(255,133,194,.5);}
+.minput{width:100%;padding:11px 18px;border:2px solid #B57FFF;border-radius:30px;background:rgba(181,127,255,.1);color:#fff;font-size:1.5rem;text-align:center;letter-spacing:.2em;font-family:inherit;outline:none;margin:8px 0;text-transform:uppercase;}
+.minput:focus{border-color:#FFD700;}
+.mrow{display:flex;gap:8px;margin-top:12px;}
+
+#rightPanel{
+  position:fixed;right:0;top:0;width:210px;height:100vh;
+  background:linear-gradient(180deg,rgba(13,5,36,.97),rgba(5,20,5,.97));
+  border-left:2px solid rgba(255,215,0,.2);padding:12px 8px;z-index:100;
+  display:flex;flex-direction:column;gap:7px;overflow-y:auto;backdrop-filter:blur(10px);
+  transition:transform .3s;
+}
+#rightPanel.hidden{transform:translateX(100%);}
+.ptitle{color:#FFD700;font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.6;padding:3px 4px 0;}
+.wbtn{width:100%;padding:8px 10px;border:2px solid transparent;border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:.8rem;cursor:pointer;text-align:left;transition:all .2s;display:flex;align-items:center;gap:7px;}
+.wbtn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,215,0,.4);transform:translateX(-2px);}
+.wbtn.active{background:rgba(255,215,0,.12);border-color:#FFD700;}
+.dvd{height:1px;background:rgba(255,215,0,.15);margin:2px 0;}
+.abtn{width:100%;padding:8px 9px;border:2px solid var(--c,#B57FFF);border-radius:10px;background:rgba(181,127,255,.07);color:var(--c,#B57FFF);font-family:inherit;font-size:.77rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:7px;}
+.abtn:hover{background:rgba(181,127,255,.18);}
+#timeRange{width:100%;accent-color:#FFD700;margin:3px 0;}
+.trow{display:flex;justify-content:space-between;color:rgba(255,255,255,.4);font-size:.65rem;padding:0 2px;}
+.codeSmall{color:rgba(255,255,255,.35);font-size:.65rem;text-align:center;padding:3px;}
+.codeSmall span{color:#FF85C2;font-size:.85rem;font-weight:bold;}
+
+#toggleBtn{position:fixed;right:215px;top:50%;transform:translateY(-50%);width:26px;height:44px;background:rgba(13,5,36,.85);border:1px solid rgba(255,215,0,.3);border-right:none;border-radius:8px 0 0 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,215,0,.65);font-size:.85rem;z-index:100;transition:all .3s;}
+
+#hud{position:fixed;bottom:16px;left:16px;display:flex;gap:7px;z-index:100;}
+.slot{width:55px;height:55px;border-radius:10px;background:rgba(0,0,0,.65);border:2px solid rgba(255,255,255,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;backdrop-filter:blur(5px);}
+.slot:hover{border-color:#fff;transform:scale(1.1);}
+.slot .icon{font-size:1.4rem;}
+.slot .key{font-size:.55rem;color:rgba(255,255,255,.4);margin-top:1px;}
+.slot .cdo{position:absolute;inset:0;background:rgba(0,0,0,.75);border-radius:8px;display:none;align-items:center;justify-content:center;color:#fff;font-size:.75rem;}
+.slot.cd .cdo{display:flex;}
+
+#topbar{position:fixed;top:12px;left:12px;display:flex;align-items:center;gap:8px;z-index:100;}
+.tbtn{width:36px;height:36px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.25);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s;color:#fff;backdrop-filter:blur(5px);}
+.tbtn:hover{background:rgba(255,255,255,.15);}
+#timeInd{padding:6px 12px;background:rgba(0,0,0,.55);border-radius:18px;color:#fff;font-size:.8rem;backdrop-filter:blur(5px);}
+
+#players{position:fixed;top:60px;left:12px;display:flex;flex-direction:column;gap:4px;z-index:100;}
+.pind{padding:4px 9px;background:rgba(0,0,0,.55);border-radius:18px;font-size:.75rem;color:#fff;display:flex;align-items:center;gap:5px;backdrop-filter:blur(4px);}
+.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+#edPanel{position:fixed;top:50%;left:16px;transform:translateY(-50%);background:rgba(13,5,36,.96);border:2px solid #B57FFF;border-radius:13px;padding:12px;z-index:100;display:none;flex-direction:column;gap:6px;min-width:148px;backdrop-filter:blur(10px);}
+#edPanel.vis{display:flex;}
+.etitle{color:#B57FFF;font-size:.85rem;font-weight:bold;text-align:center;margin-bottom:3px;}
+.ebtn{padding:7px 10px;border:1px solid rgba(181,127,255,.4);border-radius:8px;background:rgba(181,127,255,.08);color:#fff;font-family:inherit;font-size:.75rem;cursor:pointer;transition:all .2s;text-align:left;}
+.ebtn:hover{background:rgba(181,127,255,.22);}
+.ebtn.active{background:rgba(181,127,255,.38);border-color:#B57FFF;}
+
+#notif{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(255,215,0,.95);color:#1a0538;padding:10px 22px;border-radius:26px;font-size:.92rem;font-weight:bold;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;max-width:80vw;text-align:center;}
+#notif.show{opacity:1;}
+#hintBox{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#FFD700;padding:6px 16px;border-radius:18px;font-size:.85rem;z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;}
+#hintBox.vis{opacity:1;}
+#controls{position:fixed;bottom:16px;right:228px;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);padding:9px 13px;border-radius:9px;font-size:.7rem;line-height:1.6;backdrop-filter:blur(4px);z-index:100;}
+</style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div id="startScreen">
+  <div id="sparkles"></div>
+  <div class="logo-wrap">
+    <div style="text-align:center;margin-bottom:5px;">
+      <span class="logo-deco">⭐</span>
+      <span class="logo-deco" style="animation-delay:-.5s;animation-direction:reverse;">💕</span>
+      <span class="logo-deco" style="animation-delay:-1s;">🌟</span>
+    </div>
+    <div class="logo-text">GWPE</div>
+    <div class="logo-sub">– Seiklus metsas –</div>
+  </div>
+  <p class="hint">🦄 Maagiline seiklus 3–10-aastastele lastele 🌈<br>Avasta maailmu, tee sõpru ja kasuta maagilist sarve!</p>
+  <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+    <button class="btn btn-start" onclick="startGame()">🌟 Alusta Seiklust!</button>
+    <button class="btn btn-join" onclick="showJoin()">🤝 Liitu Sõbraga Koodiga</button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="hidden">
+  <div class="mbox" id="mbox"></div>
+</div>
+
+<!-- CANVAS -->
+<canvas id="c"></canvas>
+
+<!-- GAME UI -->
+<div id="gameUI" style="display:none;">
+  <div id="topbar">
+    <button class="tbtn" onclick="toggleFS()" title="Täisekraan">⛶</button>
+    <div id="timeInd">☀️ Päev</div>
+  </div>
+  <div id="players"></div>
+
+  <button id="toggleBtn" onclick="togglePanel()">◀</button>
+  <div id="rightPanel">
+    <div class="ptitle">🌍 Maailmad</div>
+    <button class="wbtn active" id="wb0" onclick="switchWorld(0)">🌲 1. Suur Mets</button>
+    <button class="wbtn" id="wb1" onclick="switchWorld(1)">⚽ 2. Jalgpalliväljak</button>
+    <button class="wbtn" id="wb2" onclick="switchWorld(2)">🍭 3. Suhkruvatist</button>
+    <button class="wbtn" id="wb3" onclick="switchWorld(3)">🧚 4. Haldjamaa</button>
+    <button class="wbtn" id="wb4" onclick="switchWorld(4)">🏡 5. Puude Linn</button>
+    <div class="dvd"></div>
+    <div class="ptitle">🛠️ Tööriistad</div>
+    <button class="abtn" style="--c:#5BFF9A" onclick="toggleEditor()">🌿 Muuda Maailma</button>
+    <button class="abtn" style="--c:#FFD700" onclick="createWorld()">✨ Loo Uus Maailm</button>
+    <button class="abtn" style="--c:#5BC8FF" onclick="showShare()">🔗 Jaga Koodi</button>
+    <div class="dvd"></div>
+    <div class="ptitle">⏰ Kellaaeg</div>
+    <input type="range" id="timeRange" min="0" max="100" value="40" oninput="setTOD(this.value/100)">
+    <div class="trow"><span>🌅</span><span>☀️</span><span>🌙</span></div>
+    <div class="dvd"></div>
+    <div class="codeSmall">Kood: <span id="myCodeDisplay">----</span></div>
+  </div>
+
+  <div id="hud">
+    <div class="slot" onclick="magic('sj')" title="1-Tähetolmu Hüpe" style="border-color:#FFD700;">
+      <span class="icon">⭐</span><span class="key">1</span><div class="cdo" id="cd0"></div>
+    </div>
+    <div class="slot" onclick="magic('rb')" title="2-Vikerkaaresild" style="border-color:#FF85C2;">
+      <span class="icon">🌈</span><span class="key">2</span><div class="cdo" id="cd1"></div>
+    </div>
+    <div class="slot" onclick="magic('nh')" title="3-Looduse Tervendus" style="border-color:#5BFF9A;">
+      <span class="icon">🌸</span><span class="key">3</span><div class="cdo" id="cd2"></div>
+    </div>
+    <div class="slot" onclick="magic('lh')" title="4-Valgussarv" style="border-color:#5BC8FF;">
+      <span class="icon">💡</span><span class="key">4</span><div class="cdo" id="cd3"></div>
+    </div>
+    <div class="slot" onclick="magic('fs')" title="5-Sõprusekaitse" style="border-color:#B57FFF;">
+      <span class="icon">💜</span><span class="key">5</span><div class="cdo" id="cd4"></div>
+    </div>
+  </div>
+
+  <div id="controls">WASD / Nooled: Liikuda<br>TÜHIK: Hüpata<br>E: Suhelda<br>1–5: Maagilised võimed<br>Hiir lohistus: Kaamera<br>M: Menüü</div>
+
+  <div id="edPanel">
+    <div class="etitle">🛠️ Maailma Muutmine</div>
+    <button class="ebtn" id="et_tree" onclick="setTool('tree')">🌲 Lisa Puu</button>
+    <button class="ebtn" id="et_mush" onclick="setTool('mush')">🍄 Lisa Seen</button>
+    <button class="ebtn" id="et_rock" onclick="setTool('rock')">🪨 Lisa Kivi</button>
+    <button class="ebtn" id="et_flower" onclick="setTool('flower')">🌸 Lisa Lill</button>
+    <button class="ebtn" id="et_animal" onclick="setTool('animal')">🐰 Lisa Loom</button>
+    <button class="ebtn" id="et_remove" onclick="setTool('remove')">❌ Eemalda</button>
+    <button class="ebtn" style="border-color:#FF4444;color:#FF4444;" onclick="toggleEditor()">✕ Sulge</button>
+  </div>
+
+  <div id="hintBox">💬 Vajuta E, et suhelda</div>
+  <div id="notif"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+//  GWPE – Seiklus metsas  |  Complete 3D Adventure Game
+// ============================================================
+
+// ---- State ----
+const G = {
+  world: 0, tod: 0.4,
+  myId: 'P' + Math.random().toString(36).substr(2,5).toUpperCase(),
+  roomCode: (Math.floor(Math.random()*9000)+1000).toString(),
+  editing: false, tool: null, panelOpen: true,
+  nearNPC: null, lightHorn: false, shieldActive: false
+};
+const CD = {sj:0,rb:0,nh:0,fs:0,lh:0};
+const CD_MAX = {sj:4,rb:10,nh:6,fs:12,lh:0};
+const MAGIC_IDX = ['sj','rb','nh','lh','fs'];
+const PCOLORS = ['#FF85C2','#5BC8FF','#5BFF9A','#FFD700','#B57FFF'];
+
+// simulated remote players
+const remotePlayers = new Map();
+const remoteData = [
+  {id:'P_Liis',name:'Liis 🌸',col:'#5BC8FF'},
+  {id:'P_Tõnu',name:'Tõnu 🌟',col:'#5BFF9A'},
+];
+
+// ---- THREE basics ----
+let scene,camera,renderer,clock;
+let playerGroup, playerVel = new THREE.Vector3();
+let playerOnGround = true, playerAnimT = 0;
+let camYaw=0, camPitch=0.38, camDist=13;
+let camDragging=false, camLX=0, camLY=0;
+let worldObjects=[], npcs=[], particles=[];
+let shieldMesh=null, rbMesh=null, hornLight=null;
+let ambientL, sunL, moonL, sunPivot;
+let elapsed=0;
+
+const KEYS={};
+
+// ============================================================
+//  INIT
+// ============================================================
+function initThree(){
+  const canvas=document.getElementById('c');
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(63,innerWidth/innerHeight,.1,600);
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  clock=new THREE.Clock();
+  window.addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+}
+
+// ============================================================
+//  LIGHTING
+// ============================================================
+function setupLights(){
+  ambientL=new THREE.AmbientLight(0x445566,.7);scene.add(ambientL);
+  sunPivot=new THREE.Object3D();scene.add(sunPivot);
+  sunL=new THREE.DirectionalLight(0xFFF5E0,1.5);
+  sunL.position.set(50,55,25);
+  sunL.castShadow=true;
+  sunL.shadow.mapSize.set(2048,2048);
+  sunL.shadow.camera.near=.5;sunL.shadow.camera.far=200;
+  sunL.shadow.camera.left=-55;sunL.shadow.camera.right=55;
+  sunL.shadow.camera.top=55;sunL.shadow.camera.bottom=-55;
+  scene.add(sunL);
+  moonL=new THREE.DirectionalLight(0x7090FF,0);
+  moonL.position.set(-30,45,-30);scene.add(moonL);
+}
+
+// ============================================================
+//  MATERIALS & HELPERS
+// ============================================================
+const MAT={};
+function mat(color,opts={}){
+  const k=color+'|'+JSON.stringify(opts);
+  if(!MAT[k])MAT[k]=new THREE.MeshLambertMaterial({color,...opts});
+  return MAT[k];
+}
+
+function addO(o){worldObjects.push(o);scene.add(o);}
+
+// ============================================================
+//  CHARACTER BUILDER
+// ============================================================
+function buildChar(col='#FF85C2'){
+  const g=new THREE.Group();
+  const oc=parseInt(col.replace('#',''),16);
+  const phong=(c,opts={})=>new THREE.MeshPhongMaterial({color:c,...opts});
+
+  function mesh(geo,c,opts={}){
+    const m=new THREE.Mesh(geo,phong(c,opts));m.castShadow=true;return m;
+  }
+
+  // torso
+  const torso=mesh(new THREE.CylinderGeometry(.28,.32,.75,10),oc);
+  torso.position.y=.88;g.add(torso);
+  // head
+  const head=mesh(new THREE.SphereGeometry(.25,12,12),0xFFDBB0);
+  head.position.y=1.48;g.add(head);
+  // hair
+  const hair=mesh(new THREE.SphereGeometry(.2,10,10),0xFF69B4);
+  hair.position.set(0,1.66,-.02);hair.scale.set(1.22,.88,1.12);g.add(hair);
+  // horn
+  const hornGeo=new THREE.ConeGeometry(.055,.4,8);
+  const hornM=mesh(hornGeo,0xFFD700,{emissive:0xFFAA00,emissiveIntensity:.7,shininess:100});
+  hornM.position.set(0,1.88,.15);hornM.rotation.x=-.28;
+  hornM.name='horn';g.add(hornM);
+  // horn glow tip
+  const tip=mesh(new THREE.SphereGeometry(.09,8,8),0xFFFFCC,{emissive:0xFFFF00,emissiveIntensity:1,transparent:true,opacity:.5});
+  tip.position.set(0,2.06,.25);tip.name='hornTip';g.add(tip);
+  // arms
+  const armG=new THREE.CylinderGeometry(.075,.075,.5,7);
+  [-1,1].forEach(s=>{const a=mesh(armG,0xFFDBB0);a.position.set(s*.42,.9,0);a.rotation.z=s*.28;g.add(a);});
+  // legs
+  const legG=new THREE.CylinderGeometry(.085,.085,.6,7);
+  [-1,1].forEach((s,i)=>{const l=mesh(legG,oc);l.position.set(s*.15,.32,0);l.name='leg'+i;g.add(l);});
+  // shoes
+  const shG=new THREE.BoxGeometry(.16,.1,.25);
+  [-1,1].forEach(s=>{const sh=mesh(shG,0x7B3F00);sh.position.set(s*.15,.02,.04);g.add(sh);});
+  // eyes
+  const eyeM=phong(0x2244AA,{emissive:0x112288,emissiveIntensity:.4});
+  [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.036,8,8),eyeM);e.position.set(s*.1,1.51,.22);g.add(e);});
+  return g;
+}
+
+// ============================================================
+//  WORLD OBJECTS
+// ============================================================
+function mkTree(x,z,s=1,dark=false){
+  const g=new THREE.Group();
+  const tc=dark?0x1B3A0E:0x3D2009;
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22*s,.3*s,2.2*s,8),mat(tc));
+  trunk.position.y=1.1*s;trunk.castShadow=true;g.add(trunk);
+  const gcs=[0x2E7D32,0x388E3C,0x1B5E20,0x43A047,0x33691E];
+  const gc=gcs[Math.floor(Math.random()*gcs.length)];
+  [0,.35,.65].forEach((h,i)=>{
+    const f=new THREE.Mesh(new THREE.SphereGeometry((1.05-i*.12)*s,10,10),mat(gc));
+    f.position.y=(2.5+h*.85)*s;f.castShadow=true;g.add(f);
+  });
+  g.position.set(x,0,z);g.userData.obstacle=true;return g;
+}
+
+function mkMush(x,z,col=0xFF4444){
+  const g=new THREE.Group();
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.09,.13,.35,8),mat(0xF5F5DC));
+  stem.position.y=.175;g.add(stem);
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(.27,10,10),mat(col));
+  cap.position.y=.46;cap.scale.y=.72;g.add(cap);
+  const dm=mat(0xFFFFFF);
+  for(let i=0;i<4;i++){const a=(i/4)*Math.PI*2;const d=new THREE.Mesh(new THREE.SphereGeometry(.033,6,6),dm);d.position.set(Math.cos(a)*.12,.5,Math.sin(a)*.12);g.add(d);}
+  g.position.set(x,0,z);g.userData.mushroom=true;return g;
+}
+
+function mkRock(x,z){
+  const g=new THREE.Group();
+  const c=[0x808080,0x697469,0x556655][Math.floor(Math.random()*3)];
+  const s=.4+Math.random()*.4;
+  const r=new THREE.Mesh(new THREE.SphereGeometry(s,7,7),mat(c));
+  r.position.set(x,s*.4,z);r.scale.x=1.3;r.scale.z=1.1;r.castShadow=true;g.add(r);
+  return g;
+}
+
+function mkFlower(x,z){
+  const g=new THREE.Group();
+  const pcs=[0xFF69B4,0xFF6347,0xFFD700,0x9370DB,0x00CED1,0xFF4500];
+  const sc=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.26,6),mat(0x2E7D32));
+  sc.position.y=.13;g.add(sc);
+  const pc=pcs[Math.floor(Math.random()*pcs.length)];
+  for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2;const p=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),mat(pc));p.position.set(Math.cos(a)*.09,.28,Math.sin(a)*.09);p.scale.y=.5;g.add(p);}
+  const ce=new THREE.Mesh(new THREE.SphereGeometry(.055,8,8),mat(0xFFD700));ce.position.y=.28;g.add(ce);
+  g.position.set(x,0,z);return g;
+}
+
+function mkRiver(){
+  const g=new THREE.Group();
+  const rm=new THREE.MeshLambertMaterial({color:0x1565C0,transparent:true,opacity:.8});
+  const riv=new THREE.Mesh(new THREE.BoxGeometry(5,.22,70),rm);riv.position.set(0,-.04,5);g.add(riv);
+  const bm=mat(0xC8A060);
+  [-3,3].forEach(s=>{const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.16,70),bm);b.position.set(s,0,5);g.add(b);});
+  return g;
+}
+
+function mkBridge(x,z){
+  const g=new THREE.Group();
+  const bm=mat(0x8B5E3C);
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(5.5,.16,2.2),bm);g.add(deck);
+  [-2.6,2.6].forEach(s=>{
+    const r=new THREE.Mesh(new THREE.BoxGeometry(.09,.65,2.2),bm);r.position.set(s,.4,0);g.add(r);
+    for(let i=-1;i<=1;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(.07,.46,.07),bm);b.position.set(s,.32,i);g.add(b);}
+  });
+  g.position.set(x,.08,z);return g;
+}
+
+function mkDuck(x,z){
+  const g=new THREE.Group();
+  const ym=mat(0xFFDD33);const hm=mat(0x1B5E20);
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.2,10,10),ym);body.position.y=.2;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.13,10,10),hm);head.position.set(.2,.42,0);g.add(head);
+  const bk=new THREE.Mesh(new THREE.ConeGeometry(.048,.14,6),mat(0xFF8C00));bk.position.set(.34,.42,0);bk.rotation.z=-Math.PI/2;g.add(bk);
+  g.position.set(x,-.02,z);
+  g.userData.mover={r:3,cx:x,cz:z,a:Math.random()*Math.PI*2,s:.3};return g;
+}
+
+function mkFish(x,z){
+  const cols=[0xFF6347,0x4169E1,0xFF8C00,0x32CD32,0xFF69B4];
+  const c=cols[Math.floor(Math.random()*cols.length)];
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.11,10,7),mat(c));body.scale.x=1.55;g.add(body);
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(.08,.12,6),mat(c));tail.position.x=-.17;tail.rotation.z=Math.PI/2;g.add(tail);
+  g.position.set(x,-.35,z);g.userData.swO=Math.random()*Math.PI*2;return g;
+}
+
+function mkRabbit(x,z){
+  const g=new THREE.Group();
+  const m=mat(0xF5F5DC);
+  const b=new THREE.Mesh(new THREE.SphereGeometry(.17,10,10),m);b.position.y=.2;g.add(b);
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.12,10,10),m);h.position.set(.16,.37,0);g.add(h);
+  const em=mat(0xFFB6C1);
+  [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.CylinderGeometry(.033,.033,.21,6),em);e.position.set(.12,.54,s*.055);e.rotation.z=.14;g.add(e);});
+  const no=new THREE.Mesh(new THREE.SphereGeometry(.025,6,6),mat(0xFF8080));no.position.set(.26,.38,0);g.add(no);
+  g.position.set(x,0,z);g.userData.mover={r:7,cx:x,cz:z,a:Math.random()*Math.PI*2,s:.9};return g;
+}
+
+function mkDeer(x,z){
+  const g=new THREE.Group();
+  const m=mat(0xC87941);const am=mat(0x8B4513);
+  const b=new THREE.Mesh(new THREE.SphereGeometry(.3,10,10),m);b.scale.x=1.5;b.position.y=.55;g.add(b);
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.17,10,10),m);h.position.set(.44,.85,0);g.add(h);
+  [-1,1].forEach(s=>{const a=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,.26,5),am);a.position.set(.4,1.08,s*.08);a.rotation.z=s*.38;g.add(a);});
+  for(let i=0;i<4;i++){const l=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.42,6),m);l.position.set(i<2?.16:-.16,.14,i%2===0?.13:-.13);g.add(l);}
+  g.position.set(x,0,z);g.userData.mover={r:12,cx:x,cz:z,a:Math.random()*Math.PI*2,s:.7};return g;
+}
+
+function mkSquirrel(x,z){
+  const g=new THREE.Group();
+  const m=mat(0xD2691E);
+  const b=new THREE.Mesh(new THREE.SphereGeometry(.12,10,10),m);b.position.y=.18;g.add(b);
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.1,10,10),m);h.position.set(.14,.33,0);g.add(h);
+  const tm=mat(0xCD853F);
+  const tail=new THREE.Mesh(new THREE.SphereGeometry(.1,10,10),tm);tail.position.set(-.15,.3,0);tail.scale.y=1.5;g.add(tail);
+  g.position.set(x,0,z);g.userData.mover={r:6,cx:x,cz:z,a:Math.random()*Math.PI*2,s:1.7};return g;
+}
+
+function mkBird(x,y,z){
+  const cols=[0xFF4444,0x4444FF,0xFFD700,0xFF69B4,0x00CED1];
+  const c=cols[Math.floor(Math.random()*cols.length)];
+  const g=new THREE.Group();
+  const m=mat(c);
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),m));
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.07,8,8),m);h.position.set(.12,.07,0);g.add(h);
+  const w=new THREE.Mesh(new THREE.BoxGeometry(.26,.04,.12),m);w.position.y=.04;g.add(w);
+  g.position.set(x,y,z);g.userData.flyer={o:Math.random()*Math.PI*2,cx:x,cy:y,cz:z};return g;
+}
+
+function mkButterfly(x,y,z){
+  const cols=[0xFF69B4,0xFFD700,0x00CED1,0xB57FFF];
+  const c=cols[Math.floor(Math.random()*cols.length)];
+  const g=new THREE.Group();
+  const m=new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide});
+  [-1,1].forEach(s=>{const w=new THREE.Mesh(new THREE.CircleGeometry(.15,8),m);w.position.x=s*.12;w.rotation.y=s*.55;g.add(w);});
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.17,6),mat(0x333333));body.rotation.x=Math.PI/2;g.add(body);
+  g.position.set(x,y,z);g.userData.flyer={o:Math.random()*Math.PI*2,cx:x,cy:y,cz:z};return g;
+}
+
+function mkPortal(x,z,col1=0x5BC8FF,col2=0xB57FFF){
+  const g=new THREE.Group();
+  const pm=new THREE.MeshLambertMaterial({color:col1,emissive:new THREE.Color(col1),emissiveIntensity:.8,transparent:true,opacity:.75,side:THREE.DoubleSide});
+  const portal=new THREE.Mesh(new THREE.TorusGeometry(1.3,.22,16,40),new THREE.MeshPhongMaterial({color:col2,emissive:new THREE.Color(col2),emissiveIntensity:.9,shininess:120}));
+  portal.position.y=2;g.add(portal);
+  const fill=new THREE.Mesh(new THREE.CircleGeometry(1.1,32),pm);fill.position.y=2;g.add(fill);
+  const glight=new THREE.PointLight(col1,1.2,5);glight.position.y=2;g.add(glight);
+  g.position.set(x,0,z);g.userData.isPortal=true;return g;
+}
+
+function mkNPC(type,x,z){
+  const g=new THREE.Group();
+  let msg='';
+  let nightOnly=false;
+
+  if(type==='mermaid'){
+    // body
+    const tm=mat(0x1ABCFF);const hm=mat(0x00C853);
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.24,12,12),mat(0xFFDBAC));b.position.y=.75;g.add(b);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.2,12,12),mat(0xFFDBAC));head.position.y=1.22;g.add(head);
+    const hair=new THREE.Mesh(new THREE.SphereGeometry(.18,10,10),hm);hair.position.set(0,1.38,-.02);hair.scale.set(1.2,.85,1);g.add(hair);
+    const tail=new THREE.Mesh(new THREE.ConeGeometry(.22,.6,8),tm);tail.position.y=.18;tail.rotation.x=Math.PI;g.add(tail);
+    const fin=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8),tm);fin.position.y=-.1;fin.scale.set(1.4,.3,1);g.add(fin);
+    msg='Tere! 🌊 Mina olen merineitsi! Mul on rohelised juuksed ja ma tunnen kõiki kalu siin jões!';
+    g.position.set(x,-.2,z);
+  }
+  else if(type==='ghost'){
+    nightOnly=true;
+    const gm=new THREE.MeshLambertMaterial({color:0xFF85C2,transparent:true,opacity:.75,emissive:0xFF4499,emissiveIntensity:.5});
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.3,12,12),gm);body.position.y=.8;body.scale.y=1.3;g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.22,12,12),gm);head.position.y=1.45;g.add(head);
+    const el=new THREE.PointLight(0xFF85C2,.9,3);el.position.y=1;g.add(el);
+    [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.055,8,8),mat(0xFFFFFF,{emissive:0xFFFFFF,emissiveIntensity:1}));e.position.set(s*.09,1.5,.18);g.add(e);});
+    msg='Uuuu~ 👻 Olen roosa kummitus! Olen üldiselt söbralik – ära muretse! Ma näitan sulle peidetud radu!';
+    g.position.set(x,0,z);
+    g.visible=false;
+  }
+  else if(type==='owl'){
+    const om=mat(0x8B6914);const lm=mat(0xFFD700);
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.28,10,10),om);b.position.y=.5;g.add(b);
+    const h=new THREE.Mesh(new THREE.SphereGeometry(.22,10,10),om);h.position.y=.95;g.add(h);
+    // eyes
+    [-.1,.1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.085,8,8),lm);e.position.set(s,.98,.17);g.add(e);const p=new THREE.Mesh(new THREE.SphereGeometry(.045,8,8),mat(0x111111));p.position.set(s,.98,.22);g.add(p);});
+    // wings
+    [-1,1].forEach(s=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(.05,.18,.4,6),om);w.position.set(s*.34,.48,0);w.rotation.z=s*.5;g.add(w);});
+    // ears
+    [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.ConeGeometry(.06,.18,5),om);e.position.set(s*.1,1.2,0);g.add(e);});
+    msg='Huu-huu! 🦉 Mina olen Tähekull! Tean kõiki portaale ja peidetud teid. Küsi minult julgesti!';
+    g.position.set(x,0,z);
+  }
+  else if(type==='mossfriend'){
+    const mm=mat(0x2E7D32);const lm=mat(0x66BB6A);
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.2,10,10),mm);b.position.y=.25;g.add(b);
+    const h=new THREE.Mesh(new THREE.SphereGeometry(.16,10,10),mm);h.position.y=.54;g.add(h);
+    const grass=new THREE.Mesh(new THREE.SphereGeometry(.12,8,8),lm);grass.position.set(0,.65,0);grass.scale.y=.4;g.add(grass);
+    [-1,1].forEach(s=>{const a=new THREE.Mesh(new THREE.SphereGeometry(.07,8,8),mm);a.position.set(s*.26,.28,0);a.rotation.z=s*.4;g.add(a);});
+    const em=mat(0x1B5E20,{emissive:0x00FF00,emissiveIntensity:.3});
+    [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.03,6,6),em);e.position.set(s*.07,.57,.14);g.add(e);});
+    msg='Tere-tere! 🌿 Olen Sammalsõber! Elan puujuurte all. Kui sa mängid õrnalt loodusega, näitan sulle salateesid!';
+    g.position.set(x,0,z);
+  }
+  else if(type==='foxcrystal'){
+    const fm=new THREE.MeshPhongMaterial({color:0x88DDFF,emissive:0x44AAFF,emissiveIntensity:.4,transparent:true,opacity:.85,shininess:150});
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.22,10,10),fm);b.scale.x=1.4;b.position.y=.35;g.add(b);
+    const h=new THREE.Mesh(new THREE.SphereGeometry(.16,10,10),fm);h.position.set(.28,.65,0);g.add(h);
+    [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.ConeGeometry(.06,.16,5),fm);e.position.set(.22+s*.06,.82,0);g.add(e);});
+    const ta=new THREE.Mesh(new THREE.CylinderGeometry(.055,.02,.5,8),fm);ta.position.set(-.25,.42,0);ta.rotation.z=.6;g.add(ta);
+    const el=new THREE.PointLight(0x44AAFF,.8,2.5);el.position.y=.5;g.add(el);
+    msg='Hei! 🦊✨ Olen Kristallrebane! Kui sa oled eksinud, järgi minu sädelevat rada ja leiad tee tagasi!';
+    g.position.set(x,0,z);
+  }
+
+  g.userData.npc={type,msg,nightOnly};
+  if(nightOnly) g.userData.nightOnly=true;
+  return g;
+}
+
+// ============================================================
+//  GROUND
+// ============================================================
+function mkGround(col=0x4CAF50,w=120,h=120){
+  const m=new THREE.MeshLambertMaterial({color:col});
+  const g=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m);
+  g.rotation.x=-Math.PI/2;g.receiveShadow=true;return g;
+}
+
+// ============================================================
+//  WORLDS
+// ============================================================
+function clearWorld(){
+  worldObjects.forEach(o=>scene.remove(o));
+  worldObjects=[];npcs=[];
+  // keep player
+}
+
+function buildWorld0(){ // Suur mets
+  renderer.setClearColor(0x87CEEB);
+  addO(mkGround(0x4CAF50));
+
+  // trees
+  const treePos=[];
+  for(let i=0;i<35;i++){
+    let x,z;
+    do{x=(Math.random()-.5)*80;z=(Math.random()-.5)*80;}
+    while(Math.abs(x)<7||Math.abs(z)<8);
+    const s=.75+Math.random()*.5;
+    const t=mkTree(x,z,s);addO(t);treePos.push({x,z});
+  }
+  // mushrooms
+  for(let i=0;i<18;i++){
+    const cols=[0xFF4444,0xFF8C00,0x9370DB,0xFF69B4];
+    const x=(Math.random()-.5)*70;const z=(Math.random()-.5)*70;
+    if(Math.abs(x)>5||Math.abs(z)>5) addO(mkMush(x,z,cols[Math.floor(Math.random()*cols.length)]));
+  }
+  // rocks
+  for(let i=0;i<12;i++) addO(mkRock((Math.random()-.5)*75,(Math.random()-.5)*75));
+  // flowers
+  for(let i=0;i<25;i++) addO(mkFlower((Math.random()-.5)*75,(Math.random()-.5)*75));
+
+  // river & bridges
+  const river=mkRiver();addO(river);
+  addO(mkBridge(-8,.08,8));
+  addO(mkBridge(6,.08,-5));
+
+  // ducks
+  for(let i=0;i<5;i++) addO(mkDuck((Math.random()*5-2.5)+(Math.random()>.5?-1:1)*1.5,-0.1,(Math.random()*40-15)));
+  // fish
+  for(let i=0;i<10;i++) addO(mkFish((Math.random()*4-2),0,(Math.random()*50-20)));
+  // rabbits
+  for(let i=0;i<4;i++) addO(mkRabbit((Math.random()-.5)*60,(Math.random()-.5)*60));
+  // deer
+  for(let i=0;i<3;i++) addO(mkDeer((Math.random()-.5)*50,(Math.random()-.5)*50));
+  // squirrels
+  for(let i=0;i<5;i++) addO(mkSquirrel((Math.random()-.5)*55,(Math.random()-.5)*55));
+  // birds
+  for(let i=0;i<8;i++) addO(mkBird((Math.random()-.5)*60,3+Math.random()*5,(Math.random()-.5)*60));
+  // butterflies
+  for(let i=0;i<10;i++) addO(mkButterfly((Math.random()-.5)*50,1+Math.random()*2,(Math.random()-.5)*50));
+
+  // NPCs
+  const npcList=[
+    mkNPC('mermaid',-1.5,-15),
+    mkNPC('ghost',15,20),
+    mkNPC('owl',-18,12),
+    mkNPC('mossfriend',22,-18),
+    mkNPC('foxcrystal',-20,-22),
+  ];
+  npcList.forEach(n=>{scene.add(n);npcs.push({group:n,nightOnly:n.userData.nightOnly||false});});
+
+  // portals
+  addO(mkPortal(-25,25,0x5BC8FF,0xB57FFF));
+  addO(mkPortal(25,-25,0xFF85C2,0xFFD700));
+
+  // stars (hidden by day)
+  const starGeo=new THREE.BufferGeometry();
+  const sv=[];for(let i=0;i<600;i++){const a=Math.random()*Math.PI*2;const b=Math.random()*Math.PI-.5;const r=150;sv.push(Math.cos(a)*Math.cos(b)*r,Math.sin(b)*r,Math.sin(a)*Math.cos(b)*r);}
+  starGeo.setAttribute('position',new THREE.Float32BufferAttribute(sv,3));
+  const starM=new THREE.PointsMaterial({color:0xFFFFFF,size:.8,transparent:true,opacity:0});
+  const stars=new THREE.Points(starGeo,starM);stars.userData.isStars=true;addO(stars);
+
+  playerGroup.position.set(0,.01,5);
+}
+
+function buildWorld1(){ // Jalgpalliväljak
+  renderer.setClearColor(0x87CEEB);
+  addO(mkGround(0x4CAF50,150,100));
+  // field lines
+  const lm=new THREE.MeshLambertMaterial({color:0xFFFFFF});
+  [[0,0,150,.12],[0,0,.12,100],[75,.06,75,.12],[0,0,.12,50]].forEach(([x,y,w,h])=>{
+    const l=new THREE.Mesh(new THREE.BoxGeometry(w,.01,h),lm);l.position.set(x,0.01,y);addO(l);
+  });
+  // goals
+  [-1,1].forEach(s=>{
+    const gm=mat(0xFFFFFF);
+    const gb=new THREE.Mesh(new THREE.BoxGeometry(7,.1,4),gm);gb.position.set(s*72,0,0);addO(gb);
+    [-3.5,3.5].forEach(z=>{const gp=new THREE.Mesh(new THREE.BoxGeometry(.15,2.4,4),gm);gp.position.set(s*72,1.2,z);addO(gp);});
+    const gt=new THREE.Mesh(new THREE.BoxGeometry(7,2.4,.12),gm);gt.position.set(s*72,1.2,0);addO(gt);
+  });
+  // center circle
+  const cCurve=new THREE.EllipseCurve(0,0,9,9,0,Math.PI*2);
+  const cPts=cCurve.getPoints(40);
+  const cGeo=new THREE.BufferGeometry().setFromPoints(cPts.map(p=>new THREE.Vector3(p.x,.01,p.y)));
+  // animals playing
+  for(let i=0;i<6;i++) addO(mkRabbit((Math.random()-.5)*80,(Math.random()-.5)*60));
+  for(let i=0;i<4;i++) addO(mkDeer((Math.random()-.5)*70,(Math.random()-.5)*55));
+  for(let i=0;i<8;i++) addO(mkBird((Math.random()-.5)*80,2+Math.random()*3,(Math.random()-.5)*60));
+  for(let i=0;i<5;i++) addO(mkSquirrel((Math.random()-.5)*70,(Math.random()-.5)*55));
+  // portal home
+  addO(mkPortal(0,0,0xFF85C2,0xFFD700));
+  playerGroup.position.set(0,.01,5);
+}
+
+function buildWorld2(){ // Suhkruvatist
+  renderer.setClearColor(0xFFE4F5);
+  addO(mkGround(0xFFB6C1,120,120));
+  // candy trees (pink/blue)
+  for(let i=0;i<20;i++){
+    const x=(Math.random()-.5)*90;const z=(Math.random()-.5)*90;
+    if(Math.abs(x)>8||Math.abs(z)>8){
+      const g=new THREE.Group();
+      const tc=mat(0xFF69B4);const sc=mat(0x87CEEB);
+      const t=new THREE.Mesh(new THREE.CylinderGeometry(.2,.28,2,8),tc);t.position.y=1;g.add(t);
+      const bl1=new THREE.Mesh(new THREE.SphereGeometry(.9,10,10),sc);bl1.position.y=2.6;g.add(bl1);
+      const bl2=new THREE.Mesh(new THREE.SphereGeometry(.65,10,10),mat(0xFFB6C1));bl2.position.y=3.4;g.add(bl2);
+      g.position.set(x,0,z);addO(g);
+    }
+  }
+  // cotton candy clouds on ground
+  const cloudCols=[0xFFB6C1,0xB5D8FF,0xFFD700,0xDDA0DD];
+  for(let i=0;i<15;i++){
+    const x=(Math.random()-.5)*80;const z=(Math.random()-.5)*80;const col=cloudCols[Math.floor(Math.random()*cloudCols.length)];
+    const cm=mat(col,{transparent:true,opacity:.85});
+    [0,.3,.6,.9,1.2].forEach((h,j)=>{const c=new THREE.Mesh(new THREE.SphereGeometry(.35+Math.random()*.2,8,8),cm);c.position.set(x+(j-.2)*(.3+Math.random()*.2),.15+h*.1,z+Math.random()*.3);addO(c);});
+  }
+  // butterflies everywhere
+  for(let i=0;i<18;i++) addO(mkButterfly((Math.random()-.5)*70,1+Math.random()*3,(Math.random()-.5)*70));
+  for(let i=0;i<6;i++) addO(mkRabbit((Math.random()-.5)*70,(Math.random()-.5)*70));
+  addO(mkPortal(0,0,0xFF69B4,0xFFB6C1));
+  playerGroup.position.set(0,.01,5);
+}
+
+function buildWorld3(){ // Haldjamaa
+  renderer.setClearColor(0xE8F5E9);
+  addO(mkGround(0xA5D6A7,120,120));
+  // glowing trees
+  for(let i=0;i<22;i++){
+    const x=(Math.random()-.5)*90;const z=(Math.random()-.5)*90;
+    if(Math.abs(x)>7||Math.abs(z)>7){
+      const t=mkTree(x,z,.8+Math.random()*.4,true);
+      // add glow
+      const el=new THREE.PointLight([0xFF85C2,0xFFD700,0x5BC8FF,0xB57FFF][Math.floor(Math.random()*4)],.5,6);
+      el.position.set(x,3.5,z);scene.add(el);// not in worldObjects so it persists — add to worldObjects
+      worldObjects.push(el);
+      addO(t);
+    }
+  }
+  // fairy lights / flowers
+  for(let i=0;i<30;i++) addO(mkFlower((Math.random()-.5)*80,(Math.random()-.5)*80));
+  for(let i=0;i<15;i++) addO(mkButterfly((Math.random()-.5)*70,1+Math.random()*4,(Math.random()-.5)*70));
+  for(let i=0;i<8;i++) addO(mkBird((Math.random()-.5)*70,3+Math.random()*4,(Math.random()-.5)*70));
+  // fairy orbs
+  for(let i=0;i<20;i++){
+    const x=(Math.random()-.5)*80;const y=1+Math.random()*4;const z=(Math.random()-.5)*80;
+    const cols=[0xFF85C2,0xFFD700,0x5BC8FF,0xB57FFF,0x5BFF9A];
+    const c=cols[Math.floor(Math.random()*cols.length)];
+    const om=new THREE.MeshPhongMaterial({color:c,emissive:new THREE.Color(c),emissiveIntensity:.9,transparent:true,opacity:.7});
+    const orb=new THREE.Mesh(new THREE.SphereGeometry(.08,8,8),om);orb.position.set(x,y,z);
+    orb.userData.flyer={o:Math.random()*Math.PI*2,cx:x,cy:y,cz:z};addO(orb);
+    const pl=new THREE.PointLight(c,.4,2.5);pl.position.set(x,y,z);worldObjects.push(pl);scene.add(pl);
+  }
+  addO(mkPortal(-20,20,0xB57FFF,0xFF85C2));
+  addO(mkPortal(20,-20,0x5BFF9A,0xFFD700));
+  playerGroup.position.set(0,.01,5);
+}
+
+function buildWorld4(){ // Suurte puude linn
+  renderer.setClearColor(0x87CEEB);
+  addO(mkGround(0x4CAF50,120,120));
+  // giant trees with houses
+  const housePos=[[-20,10],[20,15],[-15,-20],[18,-18],[0,25]];
+  housePos.forEach(([x,z],i)=>{
+    // giant trunk
+    const tm=mat(0x5D4037);
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.5,14,10),tm);trunk.position.set(x,7,z);trunk.castShadow=true;addO(trunk);
+    // foliage
+    [11,13.5,15.5].forEach((h,j)=>{const f=new THREE.Mesh(new THREE.SphereGeometry(4.5-j*.6,10,10),mat(0x2E7D32));f.position.set(x,h,z);f.castShadow=true;addO(f);});
+    // treehouse
+    const hm=mat(0x8D6E63);const hy=14+i*.3;
+    const hb=new THREE.Mesh(new THREE.BoxGeometry(3,2,3),hm);hb.position.set(x,hy,z);hb.castShadow=true;addO(hb);
+    const rm=mat([0xFF4444,0x4CAF50,0x2196F3,0xFFD700,0xFF69B4][i]);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(2.2,1.5,4),rm);roof.position.set(x,hy+1.75,z);roof.castShadow=true;addO(roof);
+    // window glow
+    const wm=new THREE.MeshPhongMaterial({color:0xFFFF99,emissive:0xFFFF00,emissiveIntensity:.5});
+    const win=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.05),wm);win.position.set(x+1.52,hy,z);addO(win);
+    // rope bridges between trees
+    if(i<4){
+      const nx=housePos[i+1][0];const nz=housePos[i+1][1];
+      const bm=mat(0x8B5E3C);
+      for(let j=0;j<6;j++){
+        const t=j/5;const bx=x+(nx-x)*t;const bz=z+(nz-z)*t;const by=hy-.8+Math.sin(t*Math.PI)*.5;
+        const plank=new THREE.Mesh(new THREE.BoxGeometry(.6,.06,1.5),bm);plank.position.set(bx,by,bz);
+        plank.lookAt(new THREE.Vector3(nx,by,nz));addO(plank);
+      }
+    }
+  });
+  // animals in trees
+  for(let i=0;i<8;i++) addO(mkBird((Math.random()-.5)*70,12+Math.random()*6,(Math.random()-.5)*70));
+  for(let i=0;i<6;i++) addO(mkSquirrel((Math.random()-.5)*60,(Math.random()-.5)*60));
+  for(let i=0;i<4;i++) addO(mkRabbit((Math.random()-.5)*60,(Math.random()-.5)*60));
+  addO(mkPortal(0,0,0xFFD700,0x5BFF9A));
+  playerGroup.position.set(0,.01,5);
+}
+
+const BUILDERS=[buildWorld0,buildWorld1,buildWorld2,buildWorld3,buildWorld4];
+
+function switchWorld(idx){
+  clearWorld();
+  G.world=idx;
+  BUILDERS[idx]();
+  setTOD(G.tod);
+  document.querySelectorAll('.wbtn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  showNotif(WNAMES[idx]+' – Tere tulemast!');
+}
+
+const WNAMES=['🌲 Suur Mets','⚽ Jalgpalliväljak','🍭 Suhkruvatist','🧚 Haldjamaa','🏡 Suurte Puude Linn'];
+
+// ============================================================
+//  TIME OF DAY
+// ============================================================
+function setTOD(t){
+  G.tod=t;
+  const n=t>.7?(t-.7)/.3:t<.2?(.2-t)/.2:0;
+  const nc=Math.max(0,Math.min(1,n));
+
+  let sky;
+  if(t<.25)sky=new THREE.Color(0x0D1B3E).lerp(new THREE.Color(0x87CEEB),t/.25);
+  else if(t<.65)sky=new THREE.Color(0x87CEEB);
+  else if(t<.78)sky=new THREE.Color(0x87CEEB).lerp(new THREE.Color(0xFF6035),(t-.65)/.13);
+  else sky=new THREE.Color(0xFF6035).lerp(new THREE.Color(0x0D1B3E),(t-.78)/.22);
+
+  renderer.setClearColor(sky);
+  scene.fog=new THREE.Fog(sky,35,130);
+  ambientL.intensity=.5+(1-nc)*.9;
+  sunL.intensity=Math.max(0,1.5-nc*2.5);
+  moonL.intensity=nc*.85;
+  const sa=t*Math.PI*2;
+  sunL.position.set(Math.cos(sa)*55,Math.abs(Math.sin(sa))*58+5,Math.sin(sa)*35);
+
+  worldObjects.forEach(o=>{
+    if(o.userData.isStars&&o.material){o.material.opacity=Math.max(0,nc*1.5);}
+  });
+  npcs.forEach(npc=>{if(npc.nightOnly)npc.group.visible=nc>.3;});
+
+  const ti=document.getElementById('timeInd');
+  ti.textContent=t>.2&&t<.65?'☀️ Päev':t>=.65&&t<.78?'🌅 Loojang':'🌙 Öö';
+}
+
+// ============================================================
+//  PARTICLES
+// ============================================================
+function spawnParticles(pos,color,count=20,spread=2,life=1.5){
+  for(let i=0;i<count;i++){
+    const pm=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9});
+    const p=new THREE.Mesh(new THREE.SphereGeometry(.07,6,6),pm);
+    p.position.copy(pos);
+    p.userData.vel=new THREE.Vector3((Math.random()-.5)*spread,(Math.random()*.5+.3)*2,(Math.random()-.5)*spread);
+    p.userData.life=life;p.userData.maxLife=life;
+    scene.add(p);particles.push(p);
+  }
+}
+
+function updateParticles(dt){
+  particles=particles.filter(p=>{
+    p.userData.life-=dt;
+    if(p.userData.life<=0){scene.remove(p);return false;}
+    p.userData.vel.y-=5*dt;
+    p.position.addScaledVector(p.userData.vel,dt);
+    p.material.opacity=p.userData.life/p.userData.maxLife;
+    return true;
+  });
+}
+
+// ============================================================
+//  MAGIC ABILITIES
+// ============================================================
+function magic(id){
+  const now=performance.now()/1000;
+  if(CD[id]>now) return;
+  const pos=playerGroup.position.clone();
+  if(id==='sj'){ // Star dust jump
+    playerVel.y=14;playerOnGround=false;
+    spawnParticles(pos.clone().add(new THREE.Vector3(0,1,0)),0xFFD700,30,3,1.2);
+    CD.sj=now+CD_MAX.sj;
+    showNotif('⭐ Tähetolmu Hüpe!');
+  }
+  else if(id==='rb'){ // Rainbow bridge
+    if(rbMesh){scene.remove(rbMesh);rbMesh=null;}
+    const geo=new THREE.BoxGeometry(6,.18,2.5);
+    const m=new THREE.MeshLambertMaterial({color:0xFF69B4,transparent:true,opacity:.75});
+    rbMesh=new THREE.Mesh(geo,m);
+    rbMesh.position.set(pos.x+4,pos.y+.1,pos.z);scene.add(rbMesh);
+    spawnParticles(rbMesh.position.clone(),0xFF85C2,25,4,1);
+    setTimeout(()=>{if(rbMesh){scene.remove(rbMesh);rbMesh=null;}},8000);
+    CD.rb=now+CD_MAX.rb;
+    showNotif('🌈 Vikerkaaresild ilmus!');
+  }
+  else if(id==='nh'){ // Nature heal
+    for(let i=0;i<8;i++){
+      const fx=(pos.x+(Math.random()-.5)*8);const fz=(pos.z+(Math.random()-.5)*8);
+      const fl=mkFlower(fx,fz);scene.add(fl);worldObjects.push(fl);
+    }
+    spawnParticles(pos.clone().add(new THREE.Vector3(0,1,0)),0x5BFF9A,30,4,1.5);
+    CD.nh=now+CD_MAX.nh;
+    showNotif('🌸 Looduse Tervendus! Lilled õitsevad!');
+  }
+  else if(id==='lh'){ // Horn light
+    G.lightHorn=!G.lightHorn;
+    if(!hornLight){hornLight=new THREE.PointLight(0xFFFF88,2,8);playerGroup.add(hornLight);hornLight.position.set(0,2.1,.25);}
+    hornLight.intensity=G.lightHorn?2:0;
+    showNotif(G.lightHorn?'💡 Valgussarv – Põleb!':'💡 Valgussarv – Kustutatud');
+  }
+  else if(id==='fs'){ // Friendship shield
+    G.shieldActive=!G.shieldActive;
+    if(!shieldMesh){
+      const sm=new THREE.MeshPhongMaterial({color:0xB57FFF,transparent:true,opacity:.28,emissive:0xB57FFF,emissiveIntensity:.5,side:THREE.DoubleSide});
+      shieldMesh=new THREE.Mesh(new THREE.SphereGeometry(2.2,16,16),sm);playerGroup.add(shieldMesh);shieldMesh.position.y=1;
+    }
+    shieldMesh.visible=G.shieldActive;
+    spawnParticles(pos.clone().add(new THREE.Vector3(0,1,0)),0xB57FFF,20,3,1);
+    if(!G.shieldActive){CD.fs=now+CD_MAX.fs;}
+    showNotif(G.shieldActive?'💜 Sõprusekaitse aktiveeritud!':'💜 Kaitse eemaldatud');
+  }
+
+  updateCDDisplay();
+}
+
+function updateCDDisplay(){
+  const now=performance.now()/1000;
+  MAGIC_IDX.forEach((id,i)=>{
+    const rem=CD[id]-now;
+    const el=document.getElementById('cd'+i);
+    const slot=el.parentElement;
+    if(rem>0){slot.classList.add('cd');el.textContent=Math.ceil(rem)+'s';}
+    else{slot.classList.remove('cd');el.textContent='';}
+  });
+}
+
+// ============================================================
+//  PLAYER MOVEMENT
+// ============================================================
+function updatePlayer(dt){
+  const speed=6;
+  const fwd=new THREE.Vector3(-Math.sin(camYaw),0,-Math.cos(camYaw));
+  const right=new THREE.Vector3(Math.cos(camYaw),0,-Math.sin(camYaw));
+  const move=new THREE.Vector3();
+
+  if(KEYS['w']||KEYS['arrowup']) move.add(fwd);
+  if(KEYS['s']||KEYS['arrowdown']) move.sub(fwd);
+  if(KEYS['a']||KEYS['arrowleft']) move.sub(right);
+  if(KEYS['d']||KEYS['arrowright']) move.add(right);
+
+  if(move.length()>.001){
+    move.normalize().multiplyScalar(speed*dt);
+    playerGroup.position.add(move);
+    // face direction
+    playerGroup.rotation.y=Math.atan2(-move.x,-move.z)+Math.PI;
+    // walking anim
+    playerAnimT+=dt*5;
+    playerGroup.children.forEach(c=>{
+      if(c.name==='leg0') c.rotation.x=Math.sin(playerAnimT)*.45;
+      if(c.name==='leg1') c.rotation.x=Math.sin(playerAnimT+Math.PI)*.45;
+    });
+  } else {playerAnimT=0;}
+
+  // gravity / jump
+  playerVel.y-=22*dt;
+  playerGroup.position.y+=playerVel.y*dt;
+  if(playerGroup.position.y<=0){playerGroup.position.y=0;playerVel.y=0;playerOnGround=true;}
+
+  // bounds
+  playerGroup.position.x=Math.max(-55,Math.min(55,playerGroup.position.x));
+  playerGroup.position.z=Math.max(-55,Math.min(55,playerGroup.position.z));
+
+  // camera
+  const offset=new THREE.Vector3(Math.sin(camYaw)*Math.cos(camPitch),Math.sin(camPitch),Math.cos(camYaw)*Math.cos(camPitch)).multiplyScalar(camDist);
+  const target=playerGroup.position.clone().add(new THREE.Vector3(0,1.5,0));
+  camera.position.lerp(target.clone().add(offset),.1);
+  camera.lookAt(target);
+
+  // check NPC proximity
+  let closest=null,closestDist=999;
+  npcs.forEach(npc=>{
+    if(!npc.group.visible) return;
+    const d=playerGroup.position.distanceTo(npc.group.position);
+    if(d<3.5&&d<closestDist){closestDist=d;closest=npc.group;}
+  });
+  G.nearNPC=closest;
+  const h=document.getElementById('hintBox');
+  if(closest){h.classList.add('vis');h.textContent='💬 Vajuta E, et suhelda';}
+  else h.classList.remove('vis');
+
+  // portal proximity
+  worldObjects.forEach(o=>{
+    if(o.userData.isPortal&&playerGroup.position.distanceTo(o.position)<2.5){
+      const next=(G.world+1)%5;
+      showNotif('✨ Portaal viib sind '+WNAMES[next]+'!');
+      setTimeout(()=>switchWorld(next),600);
+    }
+  });
+}
+
+// ============================================================
+//  ANIMATE NPCs & ANIMALS
+// ============================================================
+function animateWorld(t,dt){
+  worldObjects.forEach(o=>{
+    // movers
+    if(o.userData.mover){
+      const mv=o.userData.mover;mv.a+=mv.s*dt;
+      o.position.x=mv.cx+Math.cos(mv.a)*mv.r;
+      o.position.z=mv.cz+Math.sin(mv.a)*mv.r;
+      o.rotation.y=-mv.a+Math.PI/2;
+    }
+    // fish swimming
+    if(o.userData.swO!==undefined){
+      o.userData.swO+=dt;
+      o.position.x+=Math.sin(o.userData.swO*.8)*dt*.8;
+      o.rotation.y=Math.sin(o.userData.swO*.8)*.5;
+    }
+    // flyers (birds, butterflies, orbs)
+    if(o.userData.flyer){
+      const fl=o.userData.flyer;fl.o+=dt;
+      o.position.x=fl.cx+Math.sin(fl.o*.6)*4;
+      o.position.y=fl.cy+Math.sin(fl.o*1.1)*.6;
+      o.position.z=fl.cz+Math.cos(fl.o*.6)*4;
+      o.rotation.y=fl.o;
+    }
+    // portals spin
+    if(o.userData.isPortal){o.children[0].rotation.z+=dt*.6;}
+  });
+  // NPCs float slightly
+  npcs.forEach(npc=>{npc.group.position.y+=Math.sin(t*1.5)*.001;});
+  // shield pulse
+  if(shieldMesh&&G.shieldActive){shieldMesh.material.opacity=.22+Math.sin(t*3)*.08;}
+}
+
+// ============================================================
+//  MAIN LOOP
+// ============================================================
+function loop(){
+  requestAnimationFrame(loop);
+  const dt=Math.min(clock.getDelta(),.05);
+  elapsed+=dt;
+  updatePlayer(dt);
+  animateWorld(elapsed,dt);
+  updateParticles(dt);
+  updateCDDisplay();
+  renderer.render(scene,camera);
+}
+
+// ============================================================
+//  STARTUP
+// ============================================================
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameUI').style.display='block';
+  document.getElementById('myCodeDisplay').textContent=G.roomCode;
+  initThree();
+  setupLights();
+  playerGroup=buildChar(PCOLORS[0]);
+  scene.add(playerGroup);
+  buildWorld0();
+  setTOD(.4);
+  updatePlayerList();
+  loop();
+  // add some simulated players after a moment
+  setTimeout(()=>{addRemotePlayer('P_Liis','Liis 🌸',PCOLORS[1]);updatePlayerList();},4000);
+  setTimeout(()=>{addRemotePlayer('P_Tõnu','Tõnu 🌟',PCOLORS[2]);updatePlayerList();},9000);
+}
+
+function addRemotePlayer(id,name,col){
+  const g=buildChar(col);
+  const x=(Math.random()-.5)*10;const z=(Math.random()-.5)*10;
+  g.position.set(x,0,z);scene.add(g);
+  const data={group:g,name};remotePlayers.set(id,data);
+  showNotif('🎉 '+name+' liitus mänguga!');
+  // animate them wandering
+  let angle=Math.random()*Math.PI*2;
+  setInterval(()=>{
+    angle+=.02;
+    g.position.x+=Math.cos(angle)*.03;
+    g.position.z+=Math.sin(angle)*.03;
+    g.position.x=Math.max(-40,Math.min(40,g.position.x));
+    g.position.z=Math.max(-40,Math.min(40,g.position.z));
+    g.rotation.y=-angle;
+  },50);
+}
+
+function updatePlayerList(){
+  const pl=document.getElementById('players');
+  pl.innerHTML=`<div class="pind"><span class="pdot" style="background:${PCOLORS[0]}"></span>Sina 🦄</div>`;
+  remotePlayers.forEach((data,id)=>{
+    const i=Array.from(remotePlayers.keys()).indexOf(id);
+    pl.innerHTML+=`<div class="pind"><span class="pdot" style="background:${PCOLORS[i+1]}"></span>${data.name}</div>`;
+  });
+}
+
+// ============================================================
+//  EDITOR
+// ============================================================
+let editorTool=null;
+function toggleEditor(){
+  G.editing=!G.editing;
+  document.getElementById('edPanel').classList.toggle('vis',G.editing);
+  if(!G.editing){editorTool=null;document.querySelectorAll('.ebtn').forEach(b=>b.classList.remove('active'));}
+}
+function setTool(t){
+  editorTool=t;
+  document.querySelectorAll('.ebtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('et_'+t).classList.add('active');
+}
+function createWorld(){showNotif('✨ Uus tühi maailm loodud! Kasuta tööriistu selle täitmiseks.');clearWorld();addO(mkGround(0x4CAF50));playerGroup.position.set(0,.01,5);}
+
+// click to place objects
+window.addEventListener('click',e=>{
+  if(!G.editing||!editorTool) return;
+  if(e.target.closest('#rightPanel')||e.target.closest('#edPanel')||e.target.closest('#hud')) return;
+  const rect=renderer.domElement.getBoundingClientRect();
+  const mx=((e.clientX-rect.left)/rect.width)*2-1;
+  const my=-((e.clientY-rect.top)/rect.height)*2+1;
+  const raycaster=new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(mx,my),camera);
+  const ground=worldObjects.find(o=>o.geometry instanceof THREE.PlaneGeometry||o.geometry instanceof THREE.BoxGeometry&&o.receiveShadow);
+  const plane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+  const pt=new THREE.Vector3();
+  raycaster.ray.intersectPlane(plane,pt);
+  if(!pt) return;
+  let obj=null;
+  if(editorTool==='tree') obj=mkTree(pt.x,pt.z,.8+Math.random()*.4);
+  else if(editorTool==='mush') obj=mkMush(pt.x,pt.z,[0xFF4444,0xFF8C00,0x9370DB][Math.floor(Math.random()*3)]);
+  else if(editorTool==='rock') obj=mkRock(pt.x,pt.z);
+  else if(editorTool==='flower') obj=mkFlower(pt.x,pt.z);
+  else if(editorTool==='animal'){
+    const builders=[mkRabbit,mkSquirrel,mkDeer];
+    obj=builders[Math.floor(Math.random()*builders.length)](pt.x,pt.z);
+  }
+  else if(editorTool==='remove'){
+    let minD=4;let rem=null;
+    worldObjects.forEach(o=>{if(o.position&&o!==worldObjects[0]){const d=o.position.distanceTo(pt);if(d<minD){minD=d;rem=o;}}});
+    if(rem){scene.remove(rem);worldObjects=worldObjects.filter(o=>o!==rem);}
+    return;
+  }
+  if(obj){scene.add(obj);worldObjects.push(obj);}
+});
+
+// ============================================================
+//  MODALS
+// ============================================================
+function showShare(){
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('mbox').innerHTML=`
+    <h2>🔗 Jaga Mängukoodi</h2>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:8px;">Anna see kood oma sõbrale:</p>
+    <div class="code-big">${G.roomCode}</div>
+    <p style="color:rgba(255,255,255,.5);font-size:.82rem;">Sõber vajutab "Liitu Sõbraga Koodiga" ja sisestab koodi</p>
+    <div class="mrow">
+      <button class="btn btn-join" onclick="closeModal()" style="flex:1;padding:12px;">Sulge</button>
+    </div>`;
+}
+function showJoin(){
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('mbox').innerHTML=`
+    <h2>🤝 Liitu Sõbra Mänguga</h2>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:8px;">Sisesta sõbra mängukood:</p>
+    <input class="minput" id="joinCode" placeholder="0000" maxlength="4" oninput="this.value=this.value.replace(/\\D/g,'')">
+    <div class="mrow">
+      <button class="btn btn-join" onclick="doJoin()" style="flex:1;padding:12px;">🚀 Liitu!</button>
+      <button class="btn" onclick="closeModal()" style="flex:.5;padding:12px;background:rgba(255,255,255,.1);color:#fff;">✕</button>
+    </div>`;
+}
+function doJoin(){
+  const code=document.getElementById('joinCode').value;
+  if(code.length===4){
+    closeModal();
+    if(!document.getElementById('startScreen').classList.contains('hidden')) startGame();
+    showNotif('🎉 Liitumine õnnestus! Kood: '+code);
+    setTimeout(()=>{addRemotePlayer('P_Host','Mängu Looja 👑',PCOLORS[3]);updatePlayerList();},2000);
+  } else {showNotif('⚠️ Sisesta 4-kohaline number!');}
+}
+function closeModal(){document.getElementById('modal').classList.add('hidden');}
+
+// ============================================================
+//  NOTIFICATIONS
+// ============================================================
+let notifTimer=null;
+function showNotif(msg){
+  const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');
+  clearTimeout(notifTimer);notifTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// ============================================================
+//  UI CONTROLS
+// ============================================================
+function toggleFS(){
+  if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+let panelOpen=true;
+function togglePanel(){
+  panelOpen=!panelOpen;
+  document.getElementById('rightPanel').classList.toggle('hidden',!panelOpen);
+  const tb=document.getElementById('toggleBtn');
+  tb.textContent=panelOpen?'▶':'◀';
+  tb.style.right=panelOpen?'215px':'0';
+}
+
+// ============================================================
+//  INPUT
+// ============================================================
+window.addEventListener('keydown',e=>{
+  KEYS[e.key.toLowerCase()]=true;
+  if(e.key===' '){e.preventDefault();if(playerOnGround){playerVel.y=9.5;playerOnGround=false;spawnParticles(playerGroup.position.clone(),0xFFFFFF,10,1.5,.6);}}
+  if(e.key==='e'||e.key==='E'){if(G.nearNPC){const d=G.nearNPC.userData.npc;showNotif(d.msg);}}
+  if(e.key==='m'||e.key==='M') togglePanel();
+  if(e.key==='1') magic('sj');
+  if(e.key==='2') magic('rb');
+  if(e.key==='3') magic('nh');
+  if(e.key==='4') magic('lh');
+  if(e.key==='5') magic('fs');
+  if(e.key==='F11') toggleFS();
+});
+window.addEventListener('keyup',e=>{KEYS[e.key.toLowerCase()]=false;});
+
+// mouse camera drag
+window.addEventListener('mousedown',e=>{if(e.button===0&&!e.target.closest('#rightPanel')&&!e.target.closest('#edPanel')&&!e.target.closest('#hud')&&!e.target.closest('#topbar')){camDragging=true;camLX=e.clientX;camLY=e.clientY;}});
+window.addEventListener('mousemove',e=>{
+  if(camDragging){
+    camYaw-=(e.clientX-camLX)*.006;
+    camPitch=Math.max(.1,Math.min(1.2,camPitch-(e.clientY-camLY)*.004));
+    camLX=e.clientX;camLY=e.clientY;
+  }
+});
+window.addEventListener('mouseup',()=>camDragging=false);
+window.addEventListener('wheel',e=>{camDist=Math.max(5,Math.min(30,camDist+e.deltaY*.02));});
+
+// touch camera
+let tcX=0,tcY=0;
+window.addEventListener('touchstart',e=>{if(e.touches.length===1){tcX=e.touches[0].clientX;tcY=e.touches[0].clientY;}});
+window.addEventListener('touchmove',e=>{
+  if(e.touches.length===1){
+    camYaw-=(e.touches[0].clientX-tcX)*.006;
+    camPitch=Math.max(.1,Math.min(1.2,camPitch-(e.touches[0].clientY-tcY)*.004));
+    tcX=e.touches[0].clientX;tcY=e.touches[0].clientY;
+  }
+});
+
+// Sparkles on start screen
+(function(){
+  const c=document.getElementById('sparkles');
+  const emojis=['✨','⭐','🌟','💫','🎀','🦋','🌸','💜'];
+  for(let i=0;i<20;i++){
+    const s=document.createElement('div');
+    s.className='sparkle';
+    s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    s.style.left=Math.random()*100+'%';
+    s.style.top=Math.random()*100+'%';
+    s.style.animationDuration=(2+Math.random()*3)+'s';
+    s.style.animationDelay=(Math.random()*3)+'s';
+    c.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>
